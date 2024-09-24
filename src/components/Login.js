@@ -2,37 +2,56 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/Login.css';
 import { signInWithGooglePopup, createUserDocFromAuth, auth } from '../utilities/firebase.js';
-import { onAuthStateChanged, signOut } from 'firebase/auth'; // Import signOut and onAuthStateChanged from Firebase
+import { signInWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut } from 'firebase/auth';
 
 const logGoogleUser = async () => {
     const { user } = await signInWithGooglePopup();
     await createUserDocFromAuth(user);
-}
+};
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [currentUser, setCurrentUser] = useState(null); // Track the current user state
+    const [currentUser, setCurrentUser] = useState(null);
+    const [error, setError] = useState('');
 
     // Handle user authentication state changes
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
+            if (user) {
+                setCurrentUser(user);
+                if (!user.emailVerified) {
+                    alert('Please verify your email to access the application.');
+                    sendEmailVerification(auth.currentUser)
+                        .then(() => {
+                            alert('Verification email sent again! Please check your inbox.');
+                        });
+                }
+            } else {
+                setCurrentUser(null);
+            }
         });
         return unsubscribe; // Cleanup the listener on unmount
     }, []);
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        // Add logic for handling email and password login
-        console.log('Email:', email);
-        console.log('Password:', password);
+        setError('');
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            if (user && !user.emailVerified) {
+                alert('Your email is not verified. Please check your inbox for the verification email.');
+                sendEmailVerification(user);
+            }
+        } catch (err) {
+            setError(err.message);
+        }
     };
 
     const handleSignOut = async () => {
         await signOut(auth);
-        setCurrentUser(null); // Reset user state on sign out
-        console.log('User signed out');
+        setCurrentUser(null);
     };
 
     return (
@@ -44,6 +63,7 @@ const Login = () => {
                             <Link to="/signup">Sign up</Link>
                         </div>
                         <h2>Login</h2>
+                        {error && <p className="error-message">{error}</p>}
                         <form onSubmit={handleSubmit}>
                             <div className="input-group">
                                 <label>Your email</label>
@@ -87,7 +107,7 @@ const Login = () => {
                 )}
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default Login;

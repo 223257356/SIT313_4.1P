@@ -1,95 +1,59 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { auth } from '../utilities/firebase';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import '../styles/Signup.css';
-import { createAuthUserWithEmailAndPassword, createUserDocFromAuth } from '../utilities/firebase';
 
 const Signup = () => {
-    const [contact, setContact] = useState({
-        displayName: '',
-        email: '',
-        password: '',
-        confirmPassword: ''
-    });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-    const { displayName, email, password, confirmPassword } = contact;
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(userCredential.user);
+      alert('Verification email sent! Please check your inbox.');
+      navigate('/login');
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
-    const handleChange = (event) => {
-        const { name, value } = event.target;
-        setContact((prevValue) => ({
-            ...prevValue,
-            [name]: value
-        }));
-    };
-
-    const handleSubmit = async (event) =>
-    {
-        event.preventDefault();
-
-        if (password !== confirmPassword) {
-            alert('Passwords do not match');
-            return;
-        }
-
-        try {
-            const {user} = await createAuthUserWithEmailAndPassword(email, password);
-            await createUserDocFromAuth (user, {displayName});
-            // Handle additional user creation logic here
-            // For example, update the user's profile with the display name
-            console.log('User created successfully:', user);
-
-        } catch(error) {
-            console.error('Error creating user:', error.message);
-        }
-    };
-    return (
-        <div className="signup-container">
-            <div className="signup-box">
-                <h2>Create a DEV@Deakin Account</h2>
-                <form onSubmit={handleSubmit}>
-                    <div className="input">
-                        <label>Name*</label>
-                        <input
-                            type="text"
-                            name="displayName"
-                            value={displayName}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-                    <div className="input">
-                        <label>Email*</label>
-                        <input
-                            type="email"
-                            name="email"
-                            value={email}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-                    <div className="input">
-                        <label>Password*</label>
-                        <input
-                            type="password"
-                            name="password"
-                            value={password}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-                    <div className="input">
-                        <label>Confirm Password*</label>
-                        <input
-                            type="password"
-                            name="confirmPassword"
-                            value={confirmPassword}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-                    <button type="submit" className="create-button">Create Account</button>
-                </form>
-            </div>
-        </div>
-    );
+  return (
+    <div className="signup-container">
+      <div className="signup-box">
+        <h2>Sign Up</h2>
+        {error && <p className="error-message">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="input-group">
+            <label>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="input-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" className="signup-button">
+            Sign Up
+          </button>
+        </form>
+        <Link to="/login">Already have an account? Log in</Link>
+      </div>
+    </div>
+  );
 };
 
 export default Signup;
